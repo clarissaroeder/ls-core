@@ -1,4 +1,8 @@
-# Refine user prompts
+require 'yaml'
+
+MESSAGES = YAML.load_file('mortgage_messages.yml')
+
+# Format user prompts
 def prompt(message)
   print("=> #{message}")
 end
@@ -17,10 +21,26 @@ def number?(num)
   integer?(num) || float?(num)
 end
 
+# Validate that input is non-0
+def non_zero?(num)
+  Integer(num) > 0 || Float(num) > 0
+end
+
+# Validate non-negative
+def negative?(num)
+  Integer(num) >= 0 || Float(num) >= 0
+end
+
+# Calculate monthly payments
+def calculate_monthly_pay(loan_amount, monthly_interest, loan_duration)
+  loan_amount.to_f * (monthly_interest /
+  (1 - (1 + monthly_interest)**(-loan_duration)))
+end
+
 # Greet user
-prompt("Welcome to mortgage calculator!\n")
-prompt("-------------------------------\n")
-prompt("Please enter your name: ")
+prompt(MESSAGES['welcome'])
+prompt(MESSAGES['div'])
+prompt(MESSAGES['name_prompt'])
 
 # Get name and validate
 name = ''
@@ -28,7 +48,7 @@ loop do
   name = gets.chomp
 
   if name.empty?
-    prompt("No input. Please enter a name: ")
+    prompt(MESSAGES['invalid_name'])
   else
     break
   end
@@ -36,70 +56,79 @@ end
 
 # Personalised message
 print("\n")
-prompt("Hi #{name}! Let's figure out your mortagage plan together.\n\n")
+prompt(format(MESSAGES['greet'], name: name))
 
 loop do
   # Ask for details and validate answers
+  # Loan amount
   loan_amount = ''
   loop do
-    prompt("Please enter your loan amount: $ ")
+    prompt(MESSAGES['loan_amount_prompt'])
     loan_amount = gets.chomp
 
-    if number?(loan_amount)
+    if number?(loan_amount) && non_zero?(loan_amount)
       break
     else
-      prompt("Invalid input. Please enter a valid number.\n")
+      prompt(MESSAGES['invalid_amount'])
     end
   end
 
+  # APR
   apr = ''
   loop do
-    prompt("Please enter the Annual Percentage Rate (APR) in %: ")
+    prompt(MESSAGES['apr_prompt'])
     apr = gets.chomp
 
-    if number?(apr)
+    if number?(apr) && negative?(apr)
       break
     else
-      prompt("Invalid input. Please enter your APR in %.\n")
+      prompt(MESSAGES['invalid_apr'])
     end
   end
 
-  prompt("Please enter the intended loan duration in years and months.\n")
-  loan_duration_y = ''
+  # Loan duration
+  prompt(MESSAGES['duration_prompt'])
+  loan_years = ''
+  loan_months = ''
   loop do
-    prompt("  Years: ")
-    loan_duration_y = gets.chomp
+    loop do
+      prompt(MESSAGES['years'])
+      loan_years = gets.chomp
 
-    if integer?(loan_duration_y)
+      if integer?(loan_years) && negative?(loan_years)
+        break
+      else
+        prompt(MESSAGES['invalid'])
+      end
+    end
+
+    loop do
+      prompt(MESSAGES['months'])
+      loan_months = gets.chomp
+
+      if integer?(loan_months) && negative?(loan_months)
+        break
+      else
+        prompt(MESSAGES['invalid'])
+      end
+    end
+
+    if non_zero?(loan_years) || non_zero?(loan_months)
       break
     else
-      prompt("Invalid input. Please enter an integer.\n")
+      prompt(MESSAGES['invalid_duration'])
     end
   end
 
-  loan_duration_m = ''
-  loop do
-    prompt("  Months: ")
-    loan_duration_m = gets.chomp
-
-    if integer?(loan_duration_m)
-      break
-    else
-      prompt("Invalid input. Please enter an integer.\n")
-    end
-  end
-
-  # m = p * (j / (1 - (1 + j)**(-n)))
   # Calculate monthly interest rate
   monthly_interest = apr.to_f / 100 / 12
 
   # Calculate loan duration in months
-  loan_duration = (loan_duration_y.to_i * 12) + loan_duration_m.to_i
+  loan_duration = (loan_years.to_i * 12) + loan_months.to_i
 
   # Calculate monthly payment
-  monthly_pay = loan_amount.to_f *
-                (monthly_interest /
-                (1 - (1 + monthly_interest)**(-loan_duration)))
+  monthly_pay =
+    calculate_monthly_pay(loan_amount, monthly_interest, loan_duration)
 
   # Calculate total payment
   total = monthly_pay * loan_duration
@@ -107,16 +136,16 @@ loop do
 
   # Display result
   print("\n")
-  prompt("Given the details you have provided, your results are:\n")
+  prompt(MESSAGES['results'])
   prompt("  Payment every month: $#{format('%.2f', monthly_pay)}\n")
   prompt("  Total of #{loan_duration} payments: $#{format('%.2f', total)}\n")
   prompt("  Total interest: $#{format('%.2f', interest_total)}\n\n")
 
   # Ask for re-run
-  prompt("Would you like to calculate another mortgage plan? (Y for yes) ")
+  prompt(MESSAGES['again'])
   answer = gets.chomp
   print("\n")
   break unless answer.downcase.start_with?('y')
 end
 
-prompt("Thanks for using mortgage calculator!\n\n")
+prompt(MESSAGES['thanks'])

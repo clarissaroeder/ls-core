@@ -3,8 +3,6 @@ require 'yaml'
 
 MESSAGES = YAML.load_file('calculator_messages.yml')
 
-MESSAGES.inspect
-
 # Bonus: provide option for different languages
 def messages(message, lang='en')
   MESSAGES[lang][message]
