@@ -1,3 +1,7 @@
+require 'yaml'
+
+MESSAGES = YAML.load_file('rps_messages.yml')
+
 # CONSTANTS
 VALID_CHOICES = %w(rock paper scissors lizard spock)
 
@@ -10,147 +14,127 @@ WINNING_CONDITIONS = { 'scissors' => ['paper', 'lizard'],
                        'spock' => ['scissors', 'rock'] }
 
 # METHODS
-# Format user prompts
-def prompt(message)
-  puts("=> #{message}")
+def prompt_play_again?
+  prompt(MESSAGES['again'])
+  print("=> ")
+  answer = gets.chomp
+  answer.downcase.start_with?('y')
 end
 
-# Welcome message
-def display_welcome
-  welcome = <<~WELCOME
-  => Welcome to Rock, Paper, Lizard, Spock!
-  => You'll play against the computer. First to win 3 rounds wins the match!
-  => -----------------------------------------------------------------------
-  WELCOME
-  puts welcome
-end
-
-# How-to-play message
-def display_how_to_play
-  rules = <<~RULES
-
-  => Choose one: #{VALID_CHOICES.join(', ')}
-  => To choose, type the word or its corresponding abbreviation:
-  => rock(r); paper(p); scissors(s); lizard(l); spock(v)
-  RULES
-  puts rules
-end
-
-# Define winning conditions
-# Bonus: include spock and lizard
 def win?(first, second)
   losers = WINNING_CONDITIONS[first]
   losers.include?(second)
 end
 
-# Return round-result
-def result_round(player, computer)
+def convert_choice(choice)
+  if choice.length == 1
+    idx = ABBREVIATIONS.index(choice)
+    choice = VALID_CHOICES[idx]
+  end
+  choice
+end
+
+def determine_round_result(player, computer)
   if win?(player, computer)
-    "You won!"
+    MESSAGES['won']
   elsif win?(computer, player)
-    "You lost!"
+    MESSAGES['lost']
   else
-    "It's a tie!"
+    MESSAGES['tie']
   end
 end
 
-# Display round result
-def display_result_round(result, player, computer)
-  result = <<~RESULT
-
-  => You chose #{player}; computer chose #{computer}. #{result}
-
-  RESULT
-  puts result
-end
-
-# Display current score
-def display_score(score1, score2)
-  score = <<~SCORE
-  => The current scores are: 
-  => You: #{score1}    Computer: #{score2}
-
-  SCORE
-  puts score
-end
-
-# Display match results
-def display_result_match(score1, score2)
-  prompt("Final scores:")
-  prompt("You: #{score1}    Computer: #{score2}")
-
-  if score1 == 3
-    prompt("Congratulations! You won the match.")
+def display_result_match(scores)
+  if scores[:player] == 3
+    prompt(MESSAGES['congrats'])
   else
-    prompt("Too bad, the computer won the match this time!")
-    prompt("----------------------------------------------")
+    prompt(MESSAGES['sorry'])
+    prompt(MESSAGES['div'])
   end
-
   puts ''
 end
 
-# GAME START
-display_welcome
+def display_result_round(result, player, computer)
+  prompt(format(
+           MESSAGES['result_round'],
+           player: player, computer: computer,
+           result: result
+         ))
+end
 
-# Main game loop
-loop do
-  display_how_to_play
+def display_scores(scores)
+  scores = <<~SCORES
 
-  player_score = 0
-  computer_score = 0
+  => SCOREBOARD
+     You: #{scores[:player]}   Computer: #{scores[:computer]}
 
-  # Repeat until one reaches 3
+  SCORES
+  puts scores
+end
+
+def get_choice
+  choice = ''
   loop do
-    # Get user choice
-    choice = ''
-    loop do
-      choice = gets.chomp.downcase
-
-      if VALID_CHOICES.include?(choice) || ABBREVIATIONS.include?(choice)
-        break
-      else
-        prompt("That's not a valid choice.")
-      end
-    end
-
-    # Transform user choice if they used abbreviation
-    if choice.length == 1
-      idx = ABBREVIATIONS.index(choice)
-      choice = VALID_CHOICES[idx]
-    end
-
-    # Get computer choice
-    computer_choice = VALID_CHOICES.sample
-
-    # Get result of this round
-    result = result_round(choice, computer_choice)
-
-    # Update scores
-    if result == "You won!"
-      player_score += 1
-    elsif result == "You lost!"
-      computer_score += 1
-    end
-
-    # Display results
-    display_result_round(result, choice, computer_choice)
-
-    # Display current scores
-    display_score(player_score, computer_score)
-
-    if player_score == 3 || computer_score == 3
+    print("=> ")
+    choice = gets.chomp.downcase
+    if VALID_CHOICES.include?(choice) || ABBREVIATIONS.include?(choice)
       break
     else
-      prompt("Keep playing! This match is still going...")
+      prompt(MESSAGES['invalid_choice'])
     end
   end
+  choice = convert_choice(choice)
+end
 
-  display_result_match(player_score, computer_score)
+def play_rounds(scores)
+  loop do
+    choice = get_choice
+    computer_choice = VALID_CHOICES.sample
+    system 'clear'
 
-  prompt("Do you want to play again? Press 'Y' for yes.")
-  answer = gets.chomp
-  break unless answer.downcase.start_with?('y')
+    result = determine_round_result(choice, computer_choice)
+    scores = update_scores(scores, result)
+    display_result_round(result, choice, computer_choice)
+    display_scores(scores)
+
+    if scores[:player] == 3 || scores[:computer] == 3
+      break
+    else
+      prompt(MESSAGES['keep_playing'])
+    end
+  end
+end
+
+def prompt(message)
+  puts("=> #{message}")
+end
+
+def update_scores(scores, result)
+  if result == MESSAGES['won']
+    scores[:player] += 1
+  elsif result == MESSAGES['lost']
+    scores[:computer] += 1
+  end
+  scores
+end
+
+# GAME START
+system 'clear'
+prompt(MESSAGES['welcome'])
+
+loop do
+  prompt("Choose one: #{VALID_CHOICES.join(', ')}")
+  prompt(MESSAGES['how_to_play'])
+
+  scores = { player: 0, computer: 0 }
+  display_scores(scores)
+
+  play_rounds(scores)
+
+  display_result_match(scores)
+
+  break unless prompt_play_again?
 end
 
 puts ''
-prompt("Thank you for playing. Goodbye!")
+prompt(MESSAGES['bye'])
