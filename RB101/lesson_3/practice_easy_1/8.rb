@@ -10,4 +10,5 @@ flintstones.each do |key, value|
   end
 end
 
-p array
+# Or:
+array = flintstones.assoc("Barney")
