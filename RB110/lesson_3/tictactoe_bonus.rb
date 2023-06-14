@@ -62,6 +62,7 @@ def wait
 end
 
 def play_again?
+  prompt MESSAGES['delimiter']
   print MESSAGES['again']
   answer = gets.chomp
   answer.upcase.start_with?('Y')
@@ -96,6 +97,21 @@ def empty_squares(brd)
   brd.keys.select { |num| brd[num] == INITIAL_MARKER }
 end
 
+def play_match(current_player)
+  scores = { player: 0, computer: 0 }
+
+  loop do
+    board = initialise_board
+    play_round(board, scores, current_player)
+
+    break if someone_won_match?(scores)
+    prompt MESSAGES['keep_playing']
+    wait
+  end
+
+  match_result(scores)
+end
+
 def play_round(brd, scores, current_player)
   loop do
     system 'clear'
@@ -105,25 +121,61 @@ def play_round(brd, scores, current_player)
     break if someone_won?(brd) || board_full?(brd)
   end
 
-  get_round_result(brd, scores)
+  system 'clear'
+  round_result(brd, scores)
 end
 
-def play_rounds(current_player)
-  system 'clear'
-  scores = { player: 0, computer: 0 }
-  loop do
-    board = initialise_board
-    play_round(board, scores, current_player)
+# Determining results
+def match_result(scores)
+  if scores[:player] == 5
+    prompt MESSAGES['win']
+    puts ''
+  else
+    prompt MESSAGES['loss']
+    puts ''
+  end
+end
 
-    if scores[:player] == 5 || scores[:computer] == 5
-      prompt "#{detect_winner(board)} is the GRAND winner of this game!"
-      puts ''
-      break
-    else
-      prompt MESSAGES['keep_playing']
-      wait
+def round_result(brd, scores)
+  if someone_won?(brd)
+    scores = update_scores(detect_winner(brd), scores)
+    display_scores(scores)
+    display_board(brd)
+    prompt "#{detect_winner(brd)} won this round!"
+  else
+    display_scores(scores)
+    display_board(brd)
+    prompt MESSAGES['tie']
+  end
+  puts ''
+end
+
+def detect_winner(brd)
+  WINNING_LINES.each do |line|
+    if line.all? { |square| brd[square] == PLAYER_MARKER }
+      return 'You'
+    elsif line.all? { |square| brd[square] == COMPUTER_MARKER }
+      return 'The computer'
     end
   end
+  nil
+end
+
+def someone_won?(brd)
+  !!detect_winner(brd)
+end
+
+def someone_won_match?(scores)
+  scores[:player] == 5 || scores[:computer] == 5
+end
+
+def board_full?(brd)
+  empty_squares(brd).empty?
+end
+
+def update_scores(string, scores)
+  string == 'Player' ? scores[:player] += 1 : scores[:computer] += 1
+  scores
 end
 
 # Placing pieces
@@ -198,46 +250,6 @@ def find_potential_win(line, brd)
   end
 end
 
-# Determining result of a round
-def get_round_result(brd, scores)
-  system 'clear'
-  if someone_won?(brd)
-    scores = update_scores(detect_winner(brd), scores)
-    display_scores(scores)
-    display_board(brd)
-    prompt "#{detect_winner(brd)} won this round!"
-  else
-    display_scores(scores)
-    display_board(brd)
-    prompt MESSAGES['tie']
-  end
-  puts ''
-end
-
-def detect_winner(brd)
-  WINNING_LINES.each do |line|
-    if line.all? { |square| brd[square] == PLAYER_MARKER }
-      return 'Player'
-    elsif line.all? { |square| brd[square] == COMPUTER_MARKER }
-      return 'Computer'
-    end
-  end
-  nil
-end
-
-def someone_won?(brd)
-  !!detect_winner(brd)
-end
-
-def board_full?(brd)
-  empty_squares(brd).empty?
-end
-
-def update_scores(string, scores)
-  string == 'Player' ? scores[:player] += 1 : scores[:computer] += 1
-  scores
-end
-
 # GAME: START
 system 'clear'
 prompt MESSAGES['welcome']
@@ -245,10 +257,12 @@ puts ''
 current_player = who_first
 
 loop do
-  play_rounds(current_player)
+  play_match(current_player)
 
   break unless play_again?
 end
 
+system 'clear'
 puts ''
 prompt MESSAGES['bye']
+puts ''
