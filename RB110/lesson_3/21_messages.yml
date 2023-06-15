@@ -1,0 +1,25 @@
+welcome: |
+  Welcome to Twenty-One!
+  => ----------------------
+how_to: "You'll play against the Dealer. First to win 5 rounds wins the game!"
+wait: "=> Press Enter to continue. "
+dealer_hand: "Dealer hand: %{hand}"
+dealer_all: "Dealer hand: %{hand}, for a total of %{total}."
+player_hand: "Your hand: %{hand} for a total of %{total}."
+choice: "=> Do you want to (h)it or (s)tay? "
+invalid_choice: "Sorry, you must enter 'h' or 's'."
+hit: "You chose to hit!"
+stay: "You chose to stay at %{total}. Dealer's turn..."
+dealer_hit: "Dealer hit!"
+dealer_stay: "Dealer stays at %{total}."
+player_bust: "You busted. Dealer wins!"
+dealer_bust: "Dealer busted. You win!"
+win: "You win!"
+lose: "Dealer wins!"
+tie: "It's a tie!"
+grand_win: "CONGRATULATIONS! You won this game!"
+grand_lose: "Too bad, the dealer won the game this time..."
+again: |
+  -------------------------------------------------
+  => Do you want to play again? Press 'y' for yes."
+bye: "Thanks for playing Twenty-One! Goodbye."
