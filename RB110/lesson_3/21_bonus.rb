@@ -1,18 +1,43 @@
 require 'YAML'
 
-# CONSTANTS
+# ------------------------ CONSTANTS ------------------------ #
 MESSAGES = YAML.load_file('21_messages.yml')
+
 GOAL = 21
 MINIMUM_HIT = 17
+WINNING_SCORE = 5
 
-# METHODS
-# Formatting/ game flow
+HEARTS = "\u2665"
+DIAMONDS = "\u2666"
+SPADES = "\u2660"
+CLUBS = "\u2663"
+
+RANKS = %w(2 3 4 5 6 7 8 9 10 Jack Queen King Ace)
+VALUES = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11]
+SUITS = [HEARTS, DIAMONDS, SPADES, CLUBS]
+
+# ------------------------- METHODS ------------------------- #
+
 def prompt(msg)
   puts "=> #{msg}"
 end
 
+def clear_screen
+  system 'clear'
+end
+
+def blank_line(n=1)
+  n.times { puts }
+end
+
+def wait
+  blank_line
+  print MESSAGES['wait']
+  gets
+end
+
 def joinand(hand, last_value='?')
-  values = hand.map { |card| card[1] }
+  values = hand.map { |card| "#{card[2]} #{card[1]}" }
   case values.size
   when 2
     values[-1] = " and #{last_value}"
@@ -23,19 +48,81 @@ def joinand(hand, last_value='?')
   end
 end
 
-def wait
-  puts ''
-  print MESSAGES['wait']
-  gets
-end
-
 def play_again?
-  prompt MESSAGES['again']
+  print MESSAGES['again']
   answer = gets.chomp
   answer.downcase.start_with?('y')
 end
 
-# Results and score keeping
+# ------------ Displaying hands, scores, results ------------ #
+def show_hands(player, dealer)
+  show_dealer_hand(dealer)
+
+  player_hand = joinand(player, "#{player[-1][2]} #{player[-1][1]}")
+  total = total(player)
+  prompt format(MESSAGES['player_hand'], hand: player_hand, total: total)
+  blank_line
+end
+
+def show_dealer_hand(dealer)
+  if dealer.size == 2
+    dealer_hand = joinand(dealer)
+    prompt format(MESSAGES['dealer_hand'], hand: dealer_hand)
+  else
+    dealer_hand = joinand(dealer, "#{dealer[-1][2]} #{dealer[-1][1]}")
+    total = total(dealer)
+    prompt format(MESSAGES['dealer_all'],
+                  hand: dealer_hand, total: total)
+  end
+end
+
+def compare_hands(player, dealer)
+  dealer_hand = joinand(dealer, "#{dealer[-1][2]} #{dealer[-1][1]}")
+  player_hand = joinand(player, "#{player[-1][2]} #{player[-1][1]}")
+  d_total = total(dealer)
+  p_total = total(player)
+
+  prompt format(MESSAGES['hand_comparison'],
+                dealer_hand: dealer_hand, d_total: d_total,
+                player_hand: player_hand, p_total: p_total)
+  blank_line
+end
+
+def display_scores(scores)
+  scores = <<~SCORES
+  => SCOREBOARD
+  => ========================
+  => Player: #{scores[:player]}     Dealer: #{scores[:dealer]}
+  => ========================
+
+  SCORES
+  puts scores
+end
+
+def display_result(player, dealer)
+  result = detect_result(player, dealer)
+
+  case result
+  when :player_busted
+    prompt MESSAGES['player_bust']
+  when :dealer_busted
+    prompt MESSAGES['dealer_bust']
+  when :player
+    prompt MESSAGES['win']
+  when :dealer
+    prompt MESSAGES['lose']
+  when :tie
+    prompt MESSAGES['tie']
+  end
+end
+
+def display_grand_result(scores)
+  blank_line
+  prompt scores[:player] == 5 ? MESSAGES['grand_win'] : MESSAGES['grand_lose']
+  blank_line
+end
+
+# ----------- Calculating totals, scores, results ----------- #
 def total(hand)
   values = hand.map { |card| card[0] }
   total = values.sum
@@ -51,7 +138,10 @@ def busted?(total)
   total > GOAL
 end
 
-def detect_result(p_total, d_total)
+def detect_result(player, dealer)
+  p_total = total(player)
+  d_total = total(dealer)
+
   if p_total > GOAL
     :player_busted
   elsif d_total > GOAL
@@ -75,83 +165,31 @@ def update_scores(scores, result)
 end
 
 def game_over?(scores)
-  scores[:player] == 5 || scores[:dealer] == 5
+  scores[:player] == WINNING_SCORE || scores[:dealer] == WINNING_SCORE
 end
 
-# Displaying hands, scores, results
-def display_scores(scores)
-  scores = <<~SCORES
-  => SCOREBOARD:
-  => Player: #{scores[:player]}     Dealer: #{scores[:dealer]}
+# ------------------------ GAME PLAY ------------------------ #
 
-  SCORES
-  puts scores
-end
-
-def show_hands(player, dealer, p_total, d_total)
-  if dealer.size == 2
-    dealer_hand = joinand(dealer)
-    prompt format(MESSAGES['dealer_hand'], hand: dealer_hand)
-  else
-    dealer_hand = joinand(dealer, dealer[-1][1])
-    prompt format(MESSAGES['dealer_all'],
-                  hand: dealer_hand, total: d_total)
-  end
-
-  player_hand = joinand(player, player[-1][1])
-  prompt format(MESSAGES['player_hand'], hand: player_hand, total: p_total)
-  puts ''
-end
-
-def compare_hands(player, dealer, p_total, d_total)
-  prompt "======================"
-  prompt "Dealer has #{joinand(dealer, dealer[-1][1])}, " \
-         "for a total of #{d_total}."
-  prompt "You have #{joinand(player, player[-1][1])}, " \
-         "for a total of #{p_total}."
-  prompt "======================"
-  puts ''
-end
-
-def display_result(p_total, d_total)
-  result = detect_result(p_total, d_total)
-
-  case result
-  when :player_busted
-    prompt MESSAGES['player_bust']
-  when :dealer_busted
-    prompt MESSAGES['dealer_bust']
-  when :player
-    prompt MESSAGES['win']
-  when :dealer
-    prompt MESSAGES['lose']
-  when :tie
-    prompt MESSAGES['tie']
-  end
-end
-
-def display_grand_result(scores)
-  puts ''
-  prompt scores[:player] == 5 ? MESSAGES['grand_win'] : MESSAGES['grand_lose']
-  puts ''
-end
-
-# Game play
+# deck = [[10, "Queen", HEARTS], [2, "2", SPADES]...]
 def initialise_deck
-  values = {}
-  (2..10).each { |v| values[v.to_s] = v }
-  %w(Jack Queen King).each { |v| values[v] = 10 }
-  values['Ace'] = 11
-
-  # deck = { hearts: {"2": 2, ... "ace": ELEVEN}, diamonds: {"2": 2...}...}
-  new_deck = {}
-  %w(Heart Diamonds Clubs Spades).each { |suit| new_deck[suit] = values }
-
-  new_deck
+  new_deck = []
+  SUITS.each do |suit|
+      13.times do |idx|
+      card = [VALUES[idx], RANKS[idx], suit]
+      new_deck << card
+      end
+    end
+  
+  new_deck.shuffle
 end
 
-def initialise_hands(deck)
-  # hand = [card, card]
+# card = [numeric value, rank, suit]
+def deal_card(deck)
+  deck.pop
+end
+
+# hand = [card, card]
+def initial_deal(deck)
   player = []
   dealer = []
 
@@ -166,13 +204,39 @@ def initialise_hands(deck)
   [player, dealer]
 end
 
-def deal_card(deck)
-  suit = deck.keys.sample
-  card_value = deck[suit].keys.sample
-  # card = [numeric value, "value", "suit"]
-  card = [deck[suit][card_value], card_value, suit]
-  deck[suit].delete(card_value)
-  card
+def both_stay(scores, player, dealer)
+  show_hands(player, dealer)
+  compare_hands(player, dealer)
+  display_result(player, dealer)
+  update_scores(scores, detect_result(player, dealer))
+end
+
+# ------------------------ Player Methods ------------------- #
+def player_turn(scores, deck, player, dealer)
+  show_hands(player, dealer)
+
+  if total(player) == GOAL
+    print MESSAGES['blackjack']
+    gets
+    return
+  end
+
+  loop do 
+    choice = prompt_choice
+    if choice == 'h'
+      player_hit(scores, deck, player)
+      show_hands(player, dealer)
+      if total(player) == GOAL
+        twentyone(scores, player, dealer)
+        choice = 's'
+      end
+    end
+    break if choice == 's' || busted?(total(player))
+  end
+
+  if busted?(total(player))
+    :player_busted
+  end
 end
 
 def prompt_choice
@@ -186,87 +250,115 @@ def prompt_choice
   choice
 end
 
+def twentyone(scores, player, dealer)
+  clear_screen
+  display_scores(scores)
+  show_hands(player, dealer)
+  print MESSAGES['twentyone']
+  gets
+  blank_line
+end
+
+def player_hit(scores, deck, player)
+  clear_screen
+  display_scores(scores)
+  player << deal_card(deck)
+  prompt MESSAGES['hit']
+  blank_line
+end
+
+def player_busted(scores, player, dealer)
+  compare_hands(player, dealer)
+  display_result(player, dealer)
+  update_scores(scores, detect_result(player, dealer))
+end
+
+def player_stays(scores, player)
+  clear_screen
+  display_scores(scores)
+  prompt format(MESSAGES['stay'], total: total(player))
+  blank_line
+end
+
+# ------------------------ Dealer Methods ------------------- #
+def dealer_turn(scores, deck, player, dealer)
+  show_hands(player, dealer)
+
+  loop do
+    sleep(1.5)
+    break if total(dealer) >= MINIMUM_HIT
+    clear_screen
+    display_scores(scores)
+    dealer_hit(deck, dealer)
+    show_hands(player, dealer)
+    break if busted?(total(dealer))
+  end
+
+  if busted?(total(dealer))
+    :dealer_busted
+  end
+end
+
+def dealer_hit(deck, dealer)
+  dealer << deal_card(deck)
+  prompt MESSAGES['dealer_hit']
+  blank_line
+end
+
+def dealer_busted(scores, player, dealer)
+  compare_hands(player, dealer)
+  display_result(player, dealer)
+  update_scores(scores, detect_result(player, dealer))
+end
+
+def dealer_stays(scores, dealer)
+  clear_screen
+  display_scores(scores)
+  prompt format(MESSAGES['dealer_stay'], total: total(dealer))
+  blank_line
+end
+
+# ---------------------- A Round of 21 ---------------------- #
+def play_round(scores)
+  deck = initialise_deck
+  player, dealer = initial_deal(deck)
+
+  player_turn = player_turn(scores, deck, player, dealer)
+  if player_turn == :player_busted
+    scores = player_busted(scores, player, dealer)
+    return scores
+  end
+  player_stays(scores, player)
+
+  dealer_turn = dealer_turn(scores, deck, player, dealer)
+  if dealer_turn == :dealer_busted
+    scores = dealer_busted(scores, player, dealer)
+    return scores
+  end
+  dealer_stays(scores, dealer)
+
+  both_stay(scores, player, dealer)
+end
+
+# ------------------- A Game Until 5 Wins ------------------- #
 def play_game
   scores = { player: 0, dealer: 0 }
 
   loop do
     wait
-    system 'clear'
-    deck = initialise_deck
-
-    # initial deal
-    player, dealer = initialise_hands(deck)
-    player_total = total(player)
-    dealer_total = total(dealer)
-
-    # display status
+    clear_screen
     display_scores(scores)
-    show_hands(player, dealer, player_total, dealer_total)
-
-    # player turn
-    loop do
-      choice = prompt_choice
-
-      if choice == 'h'
-        system 'clear'
-        player << deal_card(deck)
-        display_scores(scores)
-        prompt MESSAGES['hit']
-        puts ''
-
-        player_total = total(player)
-        show_hands(player, dealer, player_total, dealer_total)
-      end
-
-      break if choice == 's' || busted?(player_total)
-    end
-
-    if busted?(player_total)
-      compare_hands(player, dealer, player_total, dealer_total)
-      display_result(player_total, dealer_total)
-      update_scores(scores, detect_result(player_total, dealer_total))
-      game_over?(scores) ? break : next
-    else
-      puts ''
-      prompt format(MESSAGES['stay'], total: player_total)
-      puts ''
-    end
-
-    # dealer turn
-    loop do
-      break if dealer_total >= MINIMUM_HIT
-      dealer << deal_card(deck)
-      prompt MESSAGES['dealer_hit']
-      puts ''
-
-      dealer_total = total(dealer)
-      show_hands(player, dealer, player_total, dealer_total)
-
-      break if busted?(dealer_total)
-    end
-
-    if busted?(dealer_total)
-      compare_hands(player, dealer, player_total, dealer_total)
-      display_result(player_total, dealer_total)
-      update_scores(scores, detect_result(player_total, dealer_total))
-      game_over?(scores) ? break : next
-    else
-      prompt format(MESSAGES['dealer_stay'], total: dealer_total)
-      puts ''
-    end
-
-    compare_hands(player, dealer, player_total, dealer_total)
-    display_result(player_total, dealer_total)
-    update_scores(scores, detect_result(player_total, dealer_total))
+    scores = play_round(scores)
     break if game_over?(scores)
   end
 
   display_grand_result(scores)
 end
 
-# MAIN GAME
-system 'clear'
+# ------------------------ MAIN GAME ------------------------ #
+clear_screen
 prompt MESSAGES['welcome']
+prompt MESSAGES['separator']
 prompt MESSAGES['how_to']
 
 loop do
@@ -274,16 +366,7 @@ loop do
   break unless play_again?
 end
 
-system 'clear'
+clear_screen
+blank_line
 prompt MESSAGES['bye']
-puts ''
-
-# Bonus 2: Why is the last use of "play_again?" in the staff solution different?
-# The first two times we ask play_again?, if the answer is yes and it
-# becomes true, we want to skip the remainder of the current loop and
-# re-start the loop from the beginning. If the answer is no, we terminate
-# the loop. That is why we use the ternary operator with next and break.
-# The third time we use play_again? is at the last line of the loop, so there
-# is nothing to skip of the remaining current iteration to re-start the loop
-# from the beginning. That is why is is sufficient to simply break out of the
-# loop when the answer is no.
+blank_line
