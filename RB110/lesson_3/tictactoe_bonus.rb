@@ -6,6 +6,7 @@ MESSAGES = YAML.load_file('tictactoe_messages.yml')
 INITIAL_MARKER = ' '
 PLAYER_MARKER = 'X'
 COMPUTER_MARKER = 'O'
+WINNING_SCORE = 5
 WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9],
                  [1, 4, 7], [2, 5, 8], [3, 6, 9],
                  [1, 5, 9], [3, 5, 7]]
@@ -69,21 +70,19 @@ end
 
 # Game play
 def who_first
-  current_player = ''
   loop do
     print MESSAGES['first']
-    answer = gets.chomp.upcase
-    if answer == 'Y'
-      current_player = 'Player'
+    answer = gets.chomp.downcase
+    if answer == 'y'
+      return 'Player'
       break
-    elsif answer == 'N'
-      current_player = 'Computer'
+    elsif answer == 'n'
+      return 'Computer'
       break
     else
       prompt MESSAGES['invalid_first']
     end
   end
-  current_player
 end
 
 def initialise_board
@@ -126,13 +125,12 @@ end
 
 # Determining results
 def match_result(scores)
-  if scores[:player] == 5
+  if scores[:player] == WINNING_SCORE
     prompt MESSAGES['win']
-    puts ''
   else
     prompt MESSAGES['loss']
-    puts ''
   end
+  puts ''
 end
 
 def round_result(brd, scores)
@@ -152,7 +150,7 @@ end
 def detect_winner(brd)
   WINNING_LINES.each do |line|
     if line.all? { |square| brd[square] == PLAYER_MARKER }
-      return 'You'
+      return 'Player'
     elsif line.all? { |square| brd[square] == COMPUTER_MARKER }
       return 'The computer'
     end
@@ -165,7 +163,7 @@ def someone_won?(brd)
 end
 
 def someone_won_match?(scores)
-  scores[:player] == 5 || scores[:computer] == 5
+  scores[:player] == WINNING_SCORE || scores[:computer] == WINNING_SCORE
 end
 
 def board_full?(brd)
