@@ -174,12 +174,12 @@ end
 def initialise_deck
   new_deck = []
   SUITS.each do |suit|
-      13.times do |idx|
+    13.times do |idx|
       card = [VALUES[idx], RANKS[idx], suit]
       new_deck << card
-      end
     end
-  
+  end
+
   new_deck.shuffle
 end
 
@@ -212,7 +212,7 @@ def both_stay(scores, player, dealer)
 end
 
 # ------------------------ Player Methods ------------------- #
-def player_turn(scores, deck, player, dealer)
+def player_turn(scores, deck, player, dealer) # METHOD TOO COMPLEX
   show_hands(player, dealer)
 
   if total(player) == GOAL
@@ -221,7 +221,15 @@ def player_turn(scores, deck, player, dealer)
     return
   end
 
-  loop do 
+  player_choice(scores, deck, player, dealer)
+
+  if busted?(total(player))
+    :player_busted
+  end
+end
+
+def player_choice(scores, deck, player, dealer)
+  loop do
     choice = prompt_choice
     if choice == 'h'
       player_hit(scores, deck, player)
@@ -232,10 +240,6 @@ def player_turn(scores, deck, player, dealer)
       end
     end
     break if choice == 's' || busted?(total(player))
-  end
-
-  if busted?(total(player))
-    :player_busted
   end
 end
 
